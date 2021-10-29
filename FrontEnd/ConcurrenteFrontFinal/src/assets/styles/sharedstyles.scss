@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Varela+Round&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@100;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200;0,300;0,400;0,600;1,200;1,300;1,400;1,600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Dosis:wght@300;400;500;700&display=swap");
 $buttonColor: #51a9f1;
 $buttonOnHoverColor: #5999d4;
 $formdarkColorBackground: rgb(32 38 43);
@@ -37,7 +38,7 @@ $backgroundColor: white;
   }
   @media screen and (max-width: 900px) {
     h1 {
-      font-size: 3rem;
+      font-size: 2rem;
     }
   }
 }
@@ -53,8 +54,10 @@ $backgroundColor: white;
       border-radius: 5px;
       p.error {
         color: red;
-        font-size: 10px;
-        margin-left: 20px;
+        font-size: 15px;
+        font-weight: bold;
+        margin-top: 3px;
+        font-family: "Dosis", sans-serif;
         text-align: left;
       }
       label {

@@ -1,0 +1,54 @@
+@import "src/assets/styles/sharedstyles.scss";
+
+.container {
+  height: auto;
+  padding: 10px;
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+  @include center();
+  overflow-x: visible;
+  flex-direction: column;
+  justify-content: flex-start;
+  @include form-controller(
+    (
+      Properties: (
+        height: 30px,
+      ),
+    )
+  );
+  form {
+    width: 20%;
+  }
+  @include subtitle();
+  .sintomas-container {
+    h2 {
+      margin-bottom: 2px;
+    }
+    width: 40%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 230px));
+    grid-gap: 1rem;
+    place-content: center;
+  }
+  @include button();
+  button {
+    margin-top: 10px;
+    width: 50%;
+    padding: 10px;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .container {
+    form {
+      width: 100%;
+    }
+    .sintomas-container {
+      width: 100%;
+    }
+  }
+}

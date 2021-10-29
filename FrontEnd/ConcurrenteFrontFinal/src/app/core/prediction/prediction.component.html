@@ -1,1 +1,30 @@
-<p>prediction works!</p>
+<div class="container">
+  <h2>Formulario para predicciones</h2>
+  <form [formGroup]="predictorForm">
+    <div class="form-controller">
+      <label>Nombre del paciente</label>
+      <div class="form-container">
+        <input placeholder="Nombre" formControlName="name" type="email" />
+      </div>
+      <p
+        class="error"
+        *ngIf="
+          predictorForm.get('name')!.errors &&
+          predictorForm.get('name')!.touched
+        "
+      >
+        Por favor ingrese su nombre correctamente
+      </p>
+    </div>
+  </form>
+  <h2>Seleccione sus sintomas</h2>
+
+  <div class="sintomas-container">
+    <app-simtomas-card
+      *ngFor="let sintoma of sintomas"
+      [sintoma]="sintoma"
+    ></app-simtomas-card>
+  </div>
+
+  <button (click)="submitForm()">Realizar Predicción</button>
+</div>

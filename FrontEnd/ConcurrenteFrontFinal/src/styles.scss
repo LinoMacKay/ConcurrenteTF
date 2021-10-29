@@ -1,4 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
+html,
 body {
+  height: 100%;
+}
+div {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box; /* Firefox */
+  -webkit-box-sizing: border-box; /* Safari */
+}
+body {
+  overflow-y: visible; /* Hide vertical scrollbar */
+  overflow-x: hidden;
   margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
 }
