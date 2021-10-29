@@ -1,0 +1,12 @@
+@import "src/assets/styles/sharedstyles.scss";
+
+.container {
+  width: 100vw;
+  height: 80px;
+  background-color: rgb(86, 172, 209);
+  @include title();
+  @include center();
+  h1 {
+    color: white;
+  }
+}

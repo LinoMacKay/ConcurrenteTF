@@ -1,0 +1,45 @@
+@import "src/assets/styles/sharedstyles.scss";
+
+.container {
+  width: 100vw;
+  height: calc(100vh);
+  display: flex;
+  .left-column {
+    @include container();
+
+    width: 75%;
+    height: 100%;
+    background-color: rgb(86, 172, 209);
+    display: flex;
+    padding: 1rem;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    align-self: center;
+    position: relative;
+    @include title();
+    @include subtitle();
+    h2 {
+      margin: 5px;
+    }
+    h1,
+    h2 {
+      color: white;
+    }
+  }
+  .right-column {
+    @include container();
+    width: 25%;
+    height: 100%;
+    padding: 0px 2rem 0px 2rem;
+    @include subtitle();
+    @include button();
+    @include center();
+    flex-direction: column;
+    button {
+      width: 100%;
+    }
+  }
+}
