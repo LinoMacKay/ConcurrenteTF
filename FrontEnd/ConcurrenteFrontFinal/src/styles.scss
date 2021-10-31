@@ -13,3 +13,22 @@ body {
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
 }
+
+$errorNotificationColor: red;
+$warningNotificationColor: #be8c00;
+$successNotificationColor: rgb(0, 128, 79);
+
+.mat-snack-bar-container.green-snackbar {
+  background: $successNotificationColor;
+  color: white;
+}
+
+.mat-snack-bar-container.red-snackbar {
+  background: $errorNotificationColor !important;
+  color: white;
+}
+
+.mat-snack-bar-container.yellow-snackbar {
+  background: $warningNotificationColor;
+  color: white;
+}

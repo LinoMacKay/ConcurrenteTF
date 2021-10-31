@@ -10,6 +10,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { SimtomasCardComponent } from './core/simtomas-card/simtomas-card.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AngularMaterialModule } from 'src/material/material.module';
+import { ResultComponent } from './core/result/result.component';
+import { NotificationComponent } from './shared/notification/notification.component';
 
 @NgModule({
   declarations: [
@@ -18,6 +20,8 @@ import { AngularMaterialModule } from 'src/material/material.module';
     AppbarComponent,
     PredictionComponent,
     SimtomasCardComponent,
+    ResultComponent,
+    NotificationComponent,
   ],
   imports: [
     BrowserModule,

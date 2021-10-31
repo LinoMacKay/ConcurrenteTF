@@ -12,14 +12,32 @@
   align-items: center;
   flex-direction: column;
   justify-content: center;
+  color: white;
+  h2 {
+    transition: all ease 250ms;
+
+    transform: translateY(40px);
+  }
+  p {
+    transition: all ease 250ms;
+
+    transform: scaleY(0);
+  }
 }
 
 .container:hover {
   transform: scale(1.04);
+  h2 {
+    transform: translateY(0);
+  }
+  p {
+    transform: scale(1);
+  }
 }
 
 .container.selected {
   transition: all ease 250ms;
 
-  border: 2px solid red;
+  outline: red solid 3px;
+  outline-offset: 2px;
 }

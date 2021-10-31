@@ -1,8 +1,9 @@
 <div
   class="container mat-elevation-z8"
+  [ngStyle]="myStyle()"
   [ngClass]="{ selected: sintoma.isSelected }"
   (click)="selectSymptom()"
 >
-  <h2>Imagen de sintoma</h2>
   <h2>{{ sintoma.name }}</h2>
+  <p>{{ sintoma.definition }}</p>
 </div>
