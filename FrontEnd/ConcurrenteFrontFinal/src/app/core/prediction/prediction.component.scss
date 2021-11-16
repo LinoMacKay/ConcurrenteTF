@@ -2,15 +2,64 @@
 
 .container {
   height: auto;
-  padding: 10px;
+  padding-bottom: 10px;
   width: 100%;
   padding-right: 15px;
   padding-left: 15px;
   margin-right: auto;
+  position: relative;
   margin-left: auto;
   @include center();
   overflow-x: visible;
   flex-direction: column;
+  .container2 {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    opacity: 0.8;
+    background-color: black;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    .lds-ring {
+      display: inline-block;
+      position: relative;
+      width: 100px;
+      height: 100px;
+      z-index: 10;
+    }
+    .lds-ring div {
+      box-sizing: border-box;
+      display: block;
+      z-index: 10;
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      margin: 8px;
+      border: 8px solid #fff;
+      border-radius: 50%;
+      animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+      border-color: #fff transparent transparent transparent;
+    }
+    .lds-ring div:nth-child(1) {
+      animation-delay: -0.45s;
+    }
+    .lds-ring div:nth-child(2) {
+      animation-delay: -0.3s;
+    }
+    .lds-ring div:nth-child(3) {
+      animation-delay: -0.15s;
+    }
+    @keyframes lds-ring {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  }
   justify-content: flex-start;
   @include form-controller(
     (
