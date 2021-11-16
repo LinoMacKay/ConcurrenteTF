@@ -12,6 +12,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AngularMaterialModule } from 'src/material/material.module';
 import { ResultComponent } from './core/result/result.component';
 import { NotificationComponent } from './shared/notification/notification.component';
+import { HttpClientModule } from '@angular/common/http';
 
 @NgModule({
   declarations: [
@@ -29,6 +30,7 @@ import { NotificationComponent } from './shared/notification/notification.compon
     ReactiveFormsModule,
     BrowserAnimationsModule,
     AngularMaterialModule,
+    HttpClientModule,
   ],
   providers: [],
   bootstrap: [AppComponent],

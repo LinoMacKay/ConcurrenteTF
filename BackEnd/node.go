@@ -22,7 +22,7 @@ var actualConfiguration int
 var remotehost string
 
 var bitacoraAddr []string //todos los localhost + puerot de notificaicon
-
+/*
 func main() {
 	bufferIn := bufio.NewReader(os.Stdin)
 	fmt.Print("Ingrese el puerto de registro: ")
@@ -53,7 +53,7 @@ func main() {
 	//rol de servidor
 	procesarNotificaciones()
 }
-
+*/
 func procesarConfiguracionActual() {
 	bufferIn := bufio.NewReader(os.Stdin)
 	fmt.Print("Ingrese configuracion del nodo: \n")

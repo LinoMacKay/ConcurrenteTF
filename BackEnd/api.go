@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"github.com/gorilla/mux"
 )
 
 type Sintoma struct {
@@ -22,6 +23,11 @@ type Persona struct {
 var ips = []string{"localhost:9002", "localhost:9004", "localhost:9006"}
 
 var personas []Persona
+
+func main() {
+	cargarAlumnos()
+	handleRequests()
+}
 
 func cargarAlumnos() {
 	personas = []Persona{
@@ -60,9 +66,10 @@ func buscarPersonas(resp http.ResponseWriter, req *http.Request) {
 
 func agregarAlumno(resp http.ResponseWriter, req *http.Request) {
 	//validacion
+	resp.Header().Set("Content-Type", "application/json; charset=utf-8")
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
 	//llamada por post
 	if req.Method == "POST" {
-
 		if req.Header.Get("Content-type") == "application/json" {
 			log.Println("Accede a agregar alumno")
 			jsonBytes, err := ioutil.ReadAll(req.Body)
@@ -73,8 +80,6 @@ func agregarAlumno(resp http.ResponseWriter, req *http.Request) {
 				var oPersona Persona
 				json.Unmarshal(jsonBytes, &oPersona)
 				personas = append(personas, oPersona)
-
-				//respuesta
 				resp.Header().Set("Content-Type", "application/json")
 				io.WriteString(resp, `
 					{
@@ -95,15 +100,16 @@ func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 	io.WriteString(resp, "Inicio")
 }
 
-func handleRequests() {
+func handleRequests() {    
+	
+	r := mux.NewRouter()
+	r.HandleFunc("/", mostrarInicio)
 	http.HandleFunc("/listarPersonas", listarAlumnos)
-	http.HandleFunc("/", mostrarInicio)
-	http.HandleFunc("/agregarPersona", agregarAlumno)
+	//http.HandleFunc("/", mostrarInicio)
+	http.HandleFunc("/predict", agregarAlumno)
+	http.Handle("/", r)
+
 	log.Fatal(http.ListenAndServe(":9000", nil))
-}
 
-func main() {
 
-	cargarAlumnos()
-	handleRequests()
 }
