@@ -212,10 +212,12 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 		con, _ := net.Dial("tcp", apiIP)
 		defer con.Close()
 
-		toSend2 := &Info{"SENDAEA", localhostNot, strconv.Itoa(actualConfiguration)}
+		toSend2 := &Info{"SENDCONFIGURATION", localhostNot, strconv.Itoa(actualConfiguration)}
 		byteInfo2, _ := json.Marshal(toSend2)
 		fmt.Fprintln(con, string(byteInfo2))
-		fmt.Println(toSend2)
+	}
+	if info.Tipo == "GETJSON" {
+		fmt.Println("Me pasaron el json", info.Valor)
 	}
 
 }

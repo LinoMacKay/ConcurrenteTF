@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -39,6 +40,8 @@ var ips = []string{"localhost:9002"}
 //bitacoras
 var wg sync.WaitGroup
 var totalBitacora = make(chan []string)
+var totalConfig = make(chan string, 3)
+var confings []string
 var bitacoraConfg []string
 
 var personas []Persona
@@ -91,19 +94,15 @@ func predict(resp http.ResponseWriter, req *http.Request) {
 	//llamada por post
 	if req.Method == "POST" {
 		if req.Header.Get("Content-type") == "application/json" {
-			log.Println("Accede a agregar alumno")
 			jsonBytes, err := ioutil.ReadAll(req.Body)
 
 			if err != nil {
 				http.Error(resp, "Error al recuperar el body", http.StatusInternalServerError)
 			} else {
-				var oPersona Persona
-				json.Unmarshal(jsonBytes, &oPersona)
-
-				fmt.Println(oPersona)
-				sendPatienteToNode(oPersona)
-
-				personas = append(personas, oPersona)
+				//var oPersona Persona
+				//json.Unmarshal(jsonBytes, &oPersona)
+				sendPatienteToNode(jsonBytes)
+				//personas = append(personas, jsonBytes)
 				resp.Header().Set("Content-Type", "application/json")
 				io.WriteString(resp, `
 					{
@@ -128,7 +127,7 @@ func reciveData() {
 	}
 }
 
-func sendPatienteToNode(oPersona Persona) {
+func sendPatienteToNode(jsonBytes []byte) {
 
 	go reciveData()
 	ip := ips[rand.Intn(len(ips))]
@@ -144,13 +143,42 @@ func sendPatienteToNode(oPersona Persona) {
 	}()
 
 	wg.Wait()
-	fmt.Println("PEDIR CONFIGURACIONES")
-
 	bitacoras := <-totalBitacora
-	dialForConfig(bitacoras)
+
+	wg.Add(1)
+	go dialForConfig(bitacoras)
+	wg.Wait()
+
+	fmt.Println("IMPRIMIR VALORES")
+	for i := 0; i < len(bitacoras); i++ {
+		confings = append(confings, <-totalConfig)
+	}
+	fmt.Println("Configuraciones", confings)
+
+	for i, v := range confings {
+
+		if v == strconv.Itoa(2) {
+			ipToSend := bitacoras[i]
+
+			go func() {
+				//defer wg.Done()
+				con, _ := net.Dial("tcp", ipToSend)
+				defer con.Close()
+
+				myString := string(jsonBytes[:])
+
+				toSend := &Info{"GETJSON", ip, myString}
+				byteInfo, _ := json.Marshal(toSend)
+				fmt.Fprintln(con, string(byteInfo))
+			}()
+		}
+
+	}
+
 }
 
 func dialForConfig(bitacoras []string) {
+	defer wg.Done()
 
 	for i := 0; i < 2; i++ {
 		func() {
@@ -159,7 +187,6 @@ func dialForConfig(bitacoras []string) {
 
 			toSend := &Info{"GETNODECONFIGURATION", bitacoras[i], ""}
 			byteInfo, _ := json.Marshal(toSend)
-			fmt.Println(toSend)
 			fmt.Fprintln(con, string(byteInfo))
 		}()
 	}
@@ -175,8 +202,8 @@ func manejarRespuetas(con net.Conn) {
 
 	fmt.Println(info)
 
-	if info.Tipo == "SENDAEA" {
-		fmt.Println("Llegó hasta pedir configuracion", info.Valor)
+	if info.Tipo == "SENDCONFIGURATION" {
+		totalConfig <- info.Valor
 	}
 	if info.Tipo == "SENDBITACORA" {
 		bitacora := strings.Split(info.Valor, ",")
