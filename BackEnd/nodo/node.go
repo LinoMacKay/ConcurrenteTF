@@ -8,7 +8,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+var apiIP = "localhost:9009"
+
+type NodeInfo struct {
+	Address      string
+	NodeFunction string
+}
 
 type Info struct {
 	Tipo     string
@@ -22,8 +30,10 @@ var actualConfiguration int
 var remotehost string
 
 var bitacoraAddr []string //todos los localhost + puerot de notificaicon
-/*
+
 func main() {
+	var m = new(sync.Mutex)
+
 	bufferIn := bufio.NewReader(os.Stdin)
 	fmt.Print("Ingrese el puerto de registro: ")
 	puerto, _ := bufferIn.ReadString('\n')
@@ -51,9 +61,9 @@ func main() {
 		validarConfiguration()
 	}
 	//rol de servidor
-	procesarNotificaciones()
+	procesarNotificaciones(m)
 }
-*/
+
 func procesarConfiguracionActual() {
 	bufferIn := bufio.NewReader(os.Stdin)
 	fmt.Print("Ingrese configuracion del nodo: \n")
@@ -143,9 +153,12 @@ func registrarSolicitud(remotehost string) {
 
 }
 
-func procesarNotificaciones() {
+func procesarNotificaciones(m *sync.Mutex) {
+	m.Lock()
 	ln, _ := net.Listen("tcp", localhostNot)
 	defer ln.Close()
+	m.Unlock()
+
 	for {
 		con, _ := ln.Accept()
 		go manejadorNotificacionesEnviadas(con)
@@ -154,6 +167,7 @@ func procesarNotificaciones() {
 
 func manejadorNotificacionesEnviadas(con net.Conn) {
 	defer con.Close()
+
 	bufferIn := bufio.NewReader(con)
 	bInfo, _ := bufferIn.ReadString('\n')
 
@@ -179,18 +193,29 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 		}
 	}
 
-	if info.Tipo == "GETBITACORA" {
-		con, _ := net.Dial("tcp", info.AddrNodo)
+	if info.Tipo == "GETBITACORA" && info.AddrNodo == localhostNot {
+		fmt.Println("Me pidieron mi bitacora", info.AddrNodo)
+		con, _ := net.Dial("tcp", apiIP)
 		defer con.Close()
-		bitacoraTemp := bitacoraAddr
-		bitacoraTemp = append(bitacoraTemp, localhostNot)
-		fmt.Fprintln(con, bitacoraTemp)
+
+		bitacoatemp := bitacoraAddr
+		bitacoatemp = append(bitacoatemp, localhostNot)
+		justString := strings.Join(bitacoatemp, ",")
+
+		toSend := &Info{"SENDBITACORA", localhostNot, justString}
+		byteInfo, _ := json.Marshal(toSend)
+		fmt.Fprintln(con, string(byteInfo))
 	}
 
 	if info.Tipo == "GETNODECONFIGURATION" {
-		con, _ := net.Dial("tcp", info.AddrNodo)
+		fmt.Println("Me pidieron mi configuración", info.AddrNodo)
+		con, _ := net.Dial("tcp", apiIP)
 		defer con.Close()
-		fmt.Fprintln(con, actualConfiguration)
+
+		toSend2 := &Info{"SENDAEA", localhostNot, strconv.Itoa(actualConfiguration)}
+		byteInfo2, _ := json.Marshal(toSend2)
+		fmt.Fprintln(con, string(byteInfo2))
+		fmt.Println(toSend2)
 	}
 
 }
