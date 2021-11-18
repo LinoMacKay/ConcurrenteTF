@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fxsjy/RF.go/RF"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -226,6 +227,36 @@ func manejarRespuetas(con net.Conn) {
 
 func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 	io.WriteString(resp, "Inicio")
+	//EJEMPLO DE LA LIBRERÍA
+	inputs := make([][]interface{}, 0)
+	targets := make([]string, 0)
+	train_inputs := make([][]interface{}, 0)
+	train_targets := make([]string, 0)
+
+	test_inputs := make([][]interface{}, 0)
+	test_targets := make([]string, 0)
+
+	for i, x := range inputs {
+		if i%3 == 0 {
+			test_inputs = append(test_inputs, x)
+		} else {
+			train_inputs = append(train_inputs, x)
+		}
+	}
+
+	for i, y := range targets {
+		if i%3 == 0 {
+			test_targets = append(test_targets, y)
+		} else {
+			train_targets = append(train_targets, y)
+		}
+	}
+
+	forest := RF.DefaultForest(inputs, targets, 100) //100 trees
+
+	RF.DumpForest(forest, "rf.bin")
+
+	forest = RF.LoadForest("rf.bin")
 
 }
 

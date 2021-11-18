@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/fxsjy/RF.go v0.0.0-20140710024358-46700521f302 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
