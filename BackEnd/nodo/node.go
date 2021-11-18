@@ -363,6 +363,9 @@ func searchMLNode(bitacoraAddr []string, pacient Pacients) {
 }
 
 func doMLProcess(pacient Pacients) {
+
+	/*ML PROCESS*/
+
 	clientOptions := options.Client().ApplyURI("mongodb+srv://mongouser:raulino12@cluster0.qvc5e.mongodb.net/Cluster0?retryWrites=true&w=majority")
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {

@@ -50,10 +50,12 @@ type Pacients struct {
 
 //ips preseteados
 var apiIp = "localhost:9000"
-var ips = []string{"localhost:9002"}
+var ips = []string{"localhost:9002", "localhost:9004", "localhost:9006"}
 
 //bitacoras
 var wg sync.WaitGroup
+var wg2 sync.WaitGroup
+
 var totalBitacora = make(chan []string)
 var totalConfig = make(chan string, 3)
 var confings []string
@@ -116,8 +118,10 @@ func predict(resp http.ResponseWriter, req *http.Request) {
 			} else {
 				//var oPersona Persona
 				//json.Unmarshal(jsonBytes, &oPersona)
+				wg2.Add(1)
 				sendPatienteToNode(jsonBytes)
 				//personas = append(personas, jsonBytes)
+				wg2.Wait()
 				resp.Header().Set("Content-Type", "application/json")
 				io.WriteString(resp, `
 					{
@@ -148,52 +152,48 @@ func sendPatienteToNode(jsonBytes []byte) {
 		go reciveData()
 	}
 	ip := ips[rand.Intn(len(ips))]
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		con, _ := net.Dial("tcp", ip)
-		defer con.Close()
-
-		toSend := &Info{"GETBITACORA", ip, ""}
-		byteInfo, _ := json.Marshal(toSend)
-		fmt.Fprintln(con, string(byteInfo))
-	}()
-
-	wg.Wait()
-	bitacoras := <-totalBitacora
-
 	if len(confings) == 0 {
 		wg.Add(1)
-		go dialForConfig(bitacoras)
+		go func() {
+			defer wg.Done()
+			con, _ := net.Dial("tcp", ip)
+			defer con.Close()
+
+			toSend := &Info{"GETBITACORA", ip, ""}
+			byteInfo, _ := json.Marshal(toSend)
+			fmt.Fprintln(con, string(byteInfo))
+		}()
+
+		wg.Wait()
+	}
+	if len(totalBitacora) > 0{
+		ips = <-totalBitacora
+	}
+	if len(confings) == 0 {
+		wg.Add(1)
+		go dialForConfig(ips)
 		wg.Wait()
 
 		fmt.Println("IMPRIMIR VALORES")
-		for i := 0; i < len(bitacoras); i++ {
+		for i := 0; i < len(ips); i++ {
 			confings = append(confings, <-totalConfig)
 		}
 	}
-
 	fmt.Println("Configuraciones", confings)
-
 	for i, v := range confings {
-
 		if v == strconv.Itoa(1) {
-			ipToSend := bitacoras[i]
-
+			ipToSend := ips[i]
 			go func() {
 				con, _ := net.Dial("tcp", ipToSend)
 				defer con.Close()
-
 				myString := string(jsonBytes[:])
-
 				toSend := &Info{"GETJSON", ip, myString}
 				byteInfo, _ := json.Marshal(toSend)
 				fmt.Fprintln(con, string(byteInfo))
+				fmt.Println("ENVIE LOS VALORES")
 			}()
 		}
-
 	}
-
 }
 
 func dialForConfig(bitacoras []string) {
@@ -229,6 +229,7 @@ func manejarRespuetas(con net.Conn) {
 		totalBitacora <- bitacora
 	}
 	if info.Tipo == "SENDRESULT" {
+		defer wg2.Done()
 		fmt.Println("RESULTADO", info.Valor)
 	}
 }
