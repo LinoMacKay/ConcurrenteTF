@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fxsjy/RF.go/RF"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,12 +39,16 @@ type Persona struct {
 	Nombre   string    `json:"name"`
 	Sintomas []Sintoma `json:"sintomas"`
 }
-
 type Pacients struct {
-	CreatedAt time.Time          `bson:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at"`
-	ID        primitive.ObjectID `bson:"_id"`
-	Persona   Persona            `bson:"_id"`
+	CreatedAt  time.Time          `bson:"created_at"`
+	UpdatedAt  time.Time          `bson:"updated_at"`
+	ID         primitive.ObjectID `bson:"_id"`
+	Persona    Persona            `bson:"person"`
+	Prediction string             `bson:"prediction"`
+}
+
+type Result struct {
+	Prediction string `json:"prediction"`
 }
 
 //ips preseteados
@@ -56,6 +59,7 @@ var ips = []string{"localhost:9002", "localhost:9004", "localhost:9006"}
 var wg sync.WaitGroup
 var wg2 sync.WaitGroup
 
+var result string
 var totalBitacora = make(chan []string)
 var totalConfig = make(chan string, 3)
 var confings []string
@@ -122,12 +126,11 @@ func predict(resp http.ResponseWriter, req *http.Request) {
 				sendPatienteToNode(jsonBytes)
 				//personas = append(personas, jsonBytes)
 				wg2.Wait()
+				resultJson := Result{result}
 				resp.Header().Set("Content-Type", "application/json")
-				io.WriteString(resp, `
-					{
-						"respuesta":"Registro satisfactorio"
-					}
-				`)
+				resp.WriteHeader(http.StatusOK)
+				json.NewEncoder(resp).Encode(resultJson)
+
 			}
 		} else {
 			http.Error(resp, "Contenido inválido", http.StatusBadRequest)
@@ -166,7 +169,7 @@ func sendPatienteToNode(jsonBytes []byte) {
 
 		wg.Wait()
 	}
-	if len(totalBitacora) > 0{
+	if len(totalBitacora) > 0 {
 		ips = <-totalBitacora
 	}
 	if len(confings) == 0 {
@@ -219,7 +222,7 @@ func manejarRespuetas(con net.Conn) {
 	var info Info
 	json.Unmarshal([]byte(bInfo), &info)
 
-	fmt.Println(info)
+	//fmt.Println(info)
 
 	if info.Tipo == "SENDCONFIGURATION" {
 		totalConfig <- info.Valor
@@ -230,42 +233,16 @@ func manejarRespuetas(con net.Conn) {
 	}
 	if info.Tipo == "SENDRESULT" {
 		defer wg2.Done()
-		fmt.Println("RESULTADO", info.Valor)
+		//fmt.Println("RESULTADO", info.Valor)
+		var pacient2 Pacients
+		json.Unmarshal([]byte(info.Valor), &pacient2)
+		result = pacient2.Prediction
+		fmt.Println(result)
 	}
 }
 
 func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 	io.WriteString(resp, "Inicio")
-	//EJEMPLO DE LA LIBRERÍA
-	inputs := make([][]interface{}, 0)
-	targets := make([]string, 0)
-	train_inputs := make([][]interface{}, 0)
-	train_targets := make([]string, 0)
-
-	test_inputs := make([][]interface{}, 0)
-	test_targets := make([]string, 0)
-
-	for i, x := range inputs {
-		if i%3 == 0 {
-			test_inputs = append(test_inputs, x)
-		} else {
-			train_inputs = append(train_inputs, x)
-		}
-	}
-
-	for i, y := range targets {
-		if i%3 == 0 {
-			test_targets = append(test_targets, y)
-		} else {
-			train_targets = append(train_targets, y)
-		}
-	}
-
-	forest := RF.DefaultForest(inputs, targets, 100) //100 trees
-
-	RF.DumpForest(forest, "rf.bin")
-
-	forest = RF.LoadForest("rf.bin")
 
 }
 

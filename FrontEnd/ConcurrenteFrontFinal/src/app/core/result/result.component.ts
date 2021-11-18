@@ -8,10 +8,13 @@ import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 })
 export class ResultComponent implements OnInit {
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {}
-  porcentaje = 0;
+  porcentaje = ' ';
   ngOnInit(): void {
-    this.porcentaje = parseFloat(this.data.toSend.prediction.slice(1, -1));
-    this.porcentaje = this.porcentaje * 100;
-    this.porcentaje = parseFloat(this.porcentaje.toFixed(2));
+    console.log();
+    if (this.data.toSend.prediction == '1') {
+      this.porcentaje = 'Tener Covid!';
+    } else {
+      this.porcentaje = 'No tener Covid';
+    }
   }
 }

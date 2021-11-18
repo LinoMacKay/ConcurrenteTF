@@ -41,7 +41,7 @@ export class PredictionComponent implements OnInit {
       this.isLoading = true;
       var toSend = {
         name: this.predictorForm.get('name')?.value,
-        sintomas: this.symptomsService.getOnlySelected(),
+        sintomas: this.symptomsService.getAllSymptons(),
       };
       this.predictionService.createPrediction(toSend).subscribe((resp: any) => {
         this.isLoading = false;

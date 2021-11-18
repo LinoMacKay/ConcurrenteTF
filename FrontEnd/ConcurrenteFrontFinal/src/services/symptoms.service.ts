@@ -103,7 +103,7 @@ export class SymptomsService {
     return this.symptoms;
   }
 
-  getOnlySelected() {
+  getAllSymptons() {
     var symptonsToSend: { sintoma: string; isSelected: number }[] = [];
 
     this.symptoms.forEach((e) => {
@@ -114,6 +114,18 @@ export class SymptomsService {
       symptonsToSend.push(data);
     });
 
+    return symptonsToSend;
+  }
+
+  getOnlySelected() {
+    var symptonsToSend: { sintoma: string; isSelected: number }[] = [];
+    this.symptoms.forEach((e) => {
+      var data = {
+        sintoma: e.shortName,
+        isSelected: e.isSelected ? 1 : 0,
+      };
+      if (e.isSelected) symptonsToSend.push(data);
+    });
     return symptonsToSend;
   }
 }

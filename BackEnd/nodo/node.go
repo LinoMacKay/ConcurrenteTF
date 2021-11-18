@@ -5,14 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/LinoMacKay/ConcurrenteTF/tree/master/BackEnd/RF"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -366,6 +369,16 @@ func doMLProcess(pacient Pacients) {
 
 	/*ML PROCESS*/
 
+	var sintomas []string
+
+	for _, v := range pacient.Persona.Sintomas {
+		haveSintoma := strconv.Itoa(v.IsSelected)
+		sintomas = append(sintomas, haveSintoma)
+	}
+	sintomas = append(sintomas, "0")
+
+	prediction := MLProcess(sintomas)
+
 	clientOptions := options.Client().ApplyURI("mongodb+srv://mongouser:raulino12@cluster0.qvc5e.mongodb.net/Cluster0?retryWrites=true&w=majority")
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
@@ -376,14 +389,101 @@ func doMLProcess(pacient Pacients) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	time.Sleep(5 * time.Second)
 	collection = client.Database("Concurrente").Collection("Pacients")
 	update := pacient
-	update.Prediction = "40%"
+	update.Prediction = prediction
 	update.UpdatedAt = time.Now()
 	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
 	sendResult(update)
+}
+
+func MLProcess(sintomas []string) string {
+	start := time.Now()
+	//Leer Dataset en el repositorio remoto
+	resp, err := http.Get("https://raw.githubusercontent.com/LinoMacKay/ConcurrenteTF/master/BackEnd/dataset_covid.csv")
+	if err != nil {
+		print(err)
+	}
+	defer resp.Body.Close()
+	content, _ := ioutil.ReadAll((resp.Body))
+	s_content := string(content)
+	lines := strings.Split(s_content, "\n")
+	inputs := make([][]interface{}, 0)
+	targets := make([]string, 0)
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r\n")
+		if len(line) == 0 {
+			continue
+		}
+		tup := strings.Split(line, ",")
+		pattern := tup[:len(tup)-1]
+		target := tup[len(tup)-1]
+		X := make([]interface{}, 0)
+		for _, x := range pattern {
+			X = append(X, x)
+		}
+		inputs = append(inputs, X)
+		targets = append(targets, target)
+	}
+	train_inputs := make([][]interface{}, 0)
+	train_targets := make([]string, 0)
+	test_inputs := make([][]interface{}, 0)
+	test_targets := make([]string, 0)
+	for i, x := range inputs {
+		if i%3 == 1 {
+			test_inputs = append(test_inputs, x)
+		} else {
+			train_inputs = append(train_inputs, x)
+		}
+	}
+	for i, y := range targets {
+		if i%3 == 1 {
+			test_targets = append(test_targets, y)
+		} else {
+			train_targets = append(train_targets, y)
+		}
+	}
+	ejemplo := sintomas
+	apattern := ejemplo[:len(ejemplo)-1]
+	atarget := ejemplo[len(ejemplo)-1]
+	ej := make([]interface{}, 0)
+	for _, value := range apattern {
+		ej = append(ej, value)
+	}
+	fmt.Println(ej)
+	ainputs := make([][]interface{}, 0)
+	atargets := make([]string, 0)
+	ainputs = append(ainputs, ej)
+	atargets = append(atargets, atarget)
+	forest := RF.BuildForest(inputs, targets, 10, 1500, len(train_inputs[0])) //100 trees
+	test_inputs = train_inputs
+	test_targets = train_targets
+	err_count := 0.0
+	fmt.Println(test_inputs[0])
+	for i := 0; i < len(test_inputs); i++ {
+		output := forest.Predicate(test_inputs[i])
+		// fmt.Println(output)
+		expect := test_targets[i]
+		//fmt.Println(output,expect)
+		if output != expect {
+			err_count += 1
+		}
+		if i == 0 {
+			fmt.Println("Se predijo de output:", output)
+		}
+	}
+	fmt.Println("success rate:", 1.0-err_count/float64(len(test_inputs)))
+	test_inputs = ainputs
+	test_targets = atargets
+	fmt.Println(test_inputs[0])
+	var output string
+	for i := 0; i < len(test_inputs); i++ {
+		output = forest.Predicate(test_inputs[i])
+		fmt.Println("Se predijo de output: ", output)
+
+	}
+	fmt.Println(time.Since(start))
+	return output
 }
 
 func sendResult(pacient Pacients) {
