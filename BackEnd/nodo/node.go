@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -36,7 +37,7 @@ type Pacients struct {
 	UpdatedAt  time.Time          `bson:"updated_at"`
 	ID         primitive.ObjectID `bson:"_id"`
 	Persona    Persona            `bson:"person"`
-	Prediction string             `bson:"person"`
+	Prediction string             `bson:"prediction"`
 }
 type Info struct {
 	Tipo     string
@@ -242,11 +243,9 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 
 		var person Persona
 		json.Unmarshal([]byte(info.Valor), &person)
-
 		//fmt.Println(reflect.TypeOf(info.Valor))
 		//fmt.Println(test)
-
-		searchNextNode(person)
+		searchDBNode(person)
 
 	}
 	if info.Tipo == "SENDCONFIGURATION" {
@@ -254,10 +253,15 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 	}
 	if info.Tipo == "GETPERSON" && actualConfiguration == 2 {
 		//fmt.Println("Me pasaron el json", info.Valor)
-
 		var person Persona
 		json.Unmarshal([]byte(info.Valor), &person)
 		addToDatabase(person)
+	}
+	if info.Tipo == "GETPACIENT" && actualConfiguration == 3 {
+		var pacient Pacients
+		json.Unmarshal([]byte(info.Valor), &pacient)
+		fmt.Println(pacient)
+		doMLProcess(pacient)
 	}
 
 }
@@ -277,28 +281,24 @@ func dialForConfig(bitacoras []string) {
 
 }
 
-func searchNextNode(person Persona) {
-
+func searchDBNode(person Persona) {
 	wg.Add(1)
 	go dialForConfig(bitacoraAddr)
 	wg.Wait()
-	fmt.Println("INICIAR GUARDADO DE CONFIGS")
-	for i := 0; i < len(bitacoraAddr); i++ {
-		confings = append(confings, <-totalConfig)
+	if len(confings) == 0 {
+		fmt.Println("INICIAR GUARDADO DE CONFIGS")
+		for i := 0; i < len(bitacoraAddr); i++ {
+			confings = append(confings, <-totalConfig)
+		}
 	}
 	fmt.Println("Configuraciones", confings)
-
 	for i, v := range confings {
-
 		if v == strconv.Itoa(2) {
 			ipToSend := bitacoraAddr[i]
-
 			go func() {
 				con, _ := net.Dial("tcp", ipToSend)
 				defer con.Close()
-
 				personToSend, _ := json.Marshal(person)
-
 				//Se envia mi persona
 				toSend := &Info{"GETPERSON", "ip", string(personToSend)}
 				byteInfo, _ := json.Marshal(toSend)
@@ -307,10 +307,10 @@ func searchNextNode(person Persona) {
 		}
 
 	}
-
 }
 
 func addToDatabase(person Persona) {
+	wg.Add(1)
 	clientOptions := options.Client().ApplyURI("mongodb+srv://mongouser:raulino12@cluster0.qvc5e.mongodb.net/Cluster0?retryWrites=true&w=majority")
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
@@ -323,10 +323,71 @@ func addToDatabase(person Persona) {
 	}
 
 	collection = client.Database("Concurrente").Collection("Pacients")
+	pacient := Pacients{time.Now(), time.Now(), primitive.NewObjectID(), person, ""}
 
-	pacients := Pacients{time.Now(), time.Now(), primitive.NewObjectID(), person, ""}
+	go func() {
+		defer wg.Done()
+		collection.InsertOne(ctx, pacient)
+	}()
 
-	collection.InsertOne(ctx, pacients)
+	fmt.Println("Se agregó correctamente", pacient)
+	wg.Wait()
+	searchMLNode(bitacoraAddr, pacient)
+}
 
-	fmt.Println("Se agregó correctamente", pacients)
+func searchMLNode(bitacoraAddr []string, pacient Pacients) {
+	wg.Add(1)
+	go dialForConfig(bitacoraAddr)
+	wg.Wait()
+	fmt.Println("INICIAR GUARDADO DE CONFIGS")
+	for i := 0; i < len(bitacoraAddr); i++ {
+		confings = append(confings, <-totalConfig)
+	}
+	fmt.Println("Configuraciones", confings)
+	for i, v := range confings {
+		if v == strconv.Itoa(3) {
+			ipToSend := bitacoraAddr[i]
+			go func() {
+				con, _ := net.Dial("tcp", ipToSend)
+				defer con.Close()
+				pacientToSend, _ := json.Marshal(pacient)
+				//Se envia mi persona
+				toSend := &Info{"GETPACIENT", "ip", string(pacientToSend)}
+				byteInfo, _ := json.Marshal(toSend)
+				fmt.Fprintln(con, string(byteInfo))
+			}()
+		}
+	}
+}
+
+func doMLProcess(pacient Pacients) {
+	clientOptions := options.Client().ApplyURI("mongodb+srv://mongouser:raulino12@cluster0.qvc5e.mongodb.net/Cluster0?retryWrites=true&w=majority")
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Second)
+	collection = client.Database("Concurrente").Collection("Pacients")
+	update := pacient
+	update.Prediction = "40%"
+	update.UpdatedAt = time.Now()
+	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
+	sendResult(pacient)
+}
+
+func sendResult(pacient Pacients) {
+	func() {
+		con, _ := net.Dial("tcp", apiIP)
+		defer con.Close()
+		pacientToSend, _ := json.Marshal(pacient)
+		toSend := &Info{"SENDRESULT", "ip", string(pacientToSend)}
+		byteInfo, _ := json.Marshal(toSend)
+		fmt.Fprintln(con, string(byteInfo))
+	}()
 }

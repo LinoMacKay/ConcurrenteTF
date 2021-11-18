@@ -223,6 +223,9 @@ func manejarRespuetas(con net.Conn) {
 		bitacora := strings.Split(info.Valor, ",")
 		totalBitacora <- bitacora
 	}
+	if info.Tipo == "SENDRESULT" {
+		fmt.Println("RESULTADO", info.Valor)
+	}
 }
 
 func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
