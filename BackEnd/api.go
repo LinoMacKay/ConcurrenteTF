@@ -144,7 +144,9 @@ func reciveData() {
 
 func sendPatienteToNode(jsonBytes []byte) {
 
-	go reciveData()
+	if len(confings) == 0 {
+		go reciveData()
+	}
 	ip := ips[rand.Intn(len(ips))]
 	wg.Add(1)
 	go func() {
@@ -160,14 +162,17 @@ func sendPatienteToNode(jsonBytes []byte) {
 	wg.Wait()
 	bitacoras := <-totalBitacora
 
-	wg.Add(1)
-	go dialForConfig(bitacoras)
-	wg.Wait()
+	if len(confings) == 0 {
+		wg.Add(1)
+		go dialForConfig(bitacoras)
+		wg.Wait()
 
-	fmt.Println("IMPRIMIR VALORES")
-	for i := 0; i < len(bitacoras); i++ {
-		confings = append(confings, <-totalConfig)
+		fmt.Println("IMPRIMIR VALORES")
+		for i := 0; i < len(bitacoras); i++ {
+			confings = append(confings, <-totalConfig)
+		}
 	}
+
 	fmt.Println("Configuraciones", confings)
 
 	for i, v := range confings {

@@ -336,12 +336,14 @@ func addToDatabase(person Persona) {
 }
 
 func searchMLNode(bitacoraAddr []string, pacient Pacients) {
-	wg.Add(1)
-	go dialForConfig(bitacoraAddr)
-	wg.Wait()
-	fmt.Println("INICIAR GUARDADO DE CONFIGS")
-	for i := 0; i < len(bitacoraAddr); i++ {
-		confings = append(confings, <-totalConfig)
+	if len(confings) == 0 {
+		wg.Add(1)
+		go dialForConfig(bitacoraAddr)
+		wg.Wait()
+		fmt.Println("INICIAR GUARDADO DE CONFIGS")
+		for i := 0; i < len(bitacoraAddr); i++ {
+			confings = append(confings, <-totalConfig)
+		}
 	}
 	fmt.Println("Configuraciones", confings)
 	for i, v := range confings {
@@ -378,7 +380,7 @@ func doMLProcess(pacient Pacients) {
 	update.Prediction = "40%"
 	update.UpdatedAt = time.Now()
 	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
-	sendResult(pacient)
+	sendResult(update)
 }
 
 func sendResult(pacient Pacients) {
