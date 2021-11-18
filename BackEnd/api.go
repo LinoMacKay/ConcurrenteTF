@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var collection *mongo.Collection
+var ctx = context.TODO()
 
 type Sintoma struct {
 	Sintoma    string `json:"sintoma"`
@@ -31,6 +38,13 @@ type Info struct {
 type Persona struct {
 	Nombre   string    `json:"name"`
 	Sintomas []Sintoma `json:"sintomas"`
+}
+
+type Pacients struct {
+	CreatedAt time.Time          `bson:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at"`
+	ID        primitive.ObjectID `bson:"_id"`
+	Persona   Persona            `bson:"_id"`
 }
 
 //ips preseteados
@@ -157,11 +171,10 @@ func sendPatienteToNode(jsonBytes []byte) {
 
 	for i, v := range confings {
 
-		if v == strconv.Itoa(2) {
+		if v == strconv.Itoa(1) {
 			ipToSend := bitacoras[i]
 
 			go func() {
-				//defer wg.Done()
 				con, _ := net.Dial("tcp", ipToSend)
 				defer con.Close()
 
@@ -180,12 +193,12 @@ func sendPatienteToNode(jsonBytes []byte) {
 func dialForConfig(bitacoras []string) {
 	defer wg.Done()
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < len(bitacoras); i++ {
 		func() {
 			con, _ := net.Dial("tcp", bitacoras[i])
 			defer con.Close()
 
-			toSend := &Info{"GETNODECONFIGURATION", bitacoras[i], ""}
+			toSend := &Info{"GETNODECONFIGURATION", "localhost:9009", ""}
 			byteInfo, _ := json.Marshal(toSend)
 			fmt.Fprintln(con, string(byteInfo))
 		}()
@@ -208,12 +221,12 @@ func manejarRespuetas(con net.Conn) {
 	if info.Tipo == "SENDBITACORA" {
 		bitacora := strings.Split(info.Valor, ",")
 		totalBitacora <- bitacora
-		fmt.Println("Llegó hasta pedir bitacora", totalBitacora)
 	}
 }
 
 func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 	io.WriteString(resp, "Inicio")
+
 }
 
 func enableCORS(router *mux.Router) {

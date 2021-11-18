@@ -2,37 +2,60 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var apiIP = "localhost:9009"
 
-type NodeInfo struct {
-	Address      string
-	NodeFunction string
-}
+var collection *mongo.Collection
+var ctx = context.TODO()
 
+type Persona struct {
+	Nombre   string    `json:"name"`
+	Sintomas []Sintoma `json:"sintomas"`
+}
+type Sintoma struct {
+	Sintoma    string `json:"sintoma"`
+	IsSelected int    `json:"isSelected"`
+}
+type Pacients struct {
+	CreatedAt  time.Time          `bson:"created_at"`
+	UpdatedAt  time.Time          `bson:"updated_at"`
+	ID         primitive.ObjectID `bson:"_id"`
+	Persona    Persona            `bson:"person"`
+	Prediction string             `bson:"person"`
+}
 type Info struct {
 	Tipo     string
 	AddrNodo string
 	Valor    string
 }
 
+var wg sync.WaitGroup
+
+var confings []string
 var localhostReg string //localhost:9001
 var localhostNot string //localhost:9002
 var actualConfiguration int
 var remotehost string
+var totalConfig = make(chan string, 3)
 
 var bitacoraAddr []string //todos los localhost + puerot de notificaicon
 
 func main() {
-	var m = new(sync.Mutex)
 
 	bufferIn := bufio.NewReader(os.Stdin)
 	fmt.Print("Ingrese el puerto de registro: ")
@@ -61,7 +84,7 @@ func main() {
 		validarConfiguration()
 	}
 	//rol de servidor
-	procesarNotificaciones(m)
+	procesarNotificaciones()
 }
 
 func procesarConfiguracionActual() {
@@ -153,11 +176,9 @@ func registrarSolicitud(remotehost string) {
 
 }
 
-func procesarNotificaciones(m *sync.Mutex) {
-	m.Lock()
+func procesarNotificaciones() {
 	ln, _ := net.Listen("tcp", localhostNot)
 	defer ln.Close()
-	m.Unlock()
 
 	for {
 		con, _ := ln.Accept()
@@ -209,15 +230,103 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 
 	if info.Tipo == "GETNODECONFIGURATION" {
 		fmt.Println("Me pidieron mi configuración", info.AddrNodo)
-		con, _ := net.Dial("tcp", apiIP)
+		con, _ := net.Dial("tcp", info.AddrNodo)
 		defer con.Close()
 
 		toSend2 := &Info{"SENDCONFIGURATION", localhostNot, strconv.Itoa(actualConfiguration)}
 		byteInfo2, _ := json.Marshal(toSend2)
 		fmt.Fprintln(con, string(byteInfo2))
 	}
-	if info.Tipo == "GETJSON" {
-		fmt.Println("Me pasaron el json", info.Valor)
+	if info.Tipo == "GETJSON" && actualConfiguration == 1 {
+		//fmt.Println("Me pasaron el json", info.Valor)
+
+		var person Persona
+		json.Unmarshal([]byte(info.Valor), &person)
+
+		//fmt.Println(reflect.TypeOf(info.Valor))
+		//fmt.Println(test)
+
+		searchNextNode(person)
+
+	}
+	if info.Tipo == "SENDCONFIGURATION" {
+		totalConfig <- info.Valor
+	}
+	if info.Tipo == "GETPERSON" && actualConfiguration == 2 {
+		//fmt.Println("Me pasaron el json", info.Valor)
+
+		var person Persona
+		json.Unmarshal([]byte(info.Valor), &person)
+		addToDatabase(person)
 	}
 
+}
+
+func dialForConfig(bitacoras []string) {
+	defer wg.Done()
+	for i := 0; i < len(bitacoras); i++ {
+		func() {
+			con, _ := net.Dial("tcp", bitacoras[i])
+			defer con.Close()
+
+			toSend := &Info{"GETNODECONFIGURATION", localhostNot, ""}
+			byteInfo, _ := json.Marshal(toSend)
+			fmt.Fprintln(con, string(byteInfo))
+		}()
+	}
+
+}
+
+func searchNextNode(person Persona) {
+
+	wg.Add(1)
+	go dialForConfig(bitacoraAddr)
+	wg.Wait()
+	fmt.Println("INICIAR GUARDADO DE CONFIGS")
+	for i := 0; i < len(bitacoraAddr); i++ {
+		confings = append(confings, <-totalConfig)
+	}
+	fmt.Println("Configuraciones", confings)
+
+	for i, v := range confings {
+
+		if v == strconv.Itoa(2) {
+			ipToSend := bitacoraAddr[i]
+
+			go func() {
+				con, _ := net.Dial("tcp", ipToSend)
+				defer con.Close()
+
+				personToSend, _ := json.Marshal(person)
+
+				//Se envia mi persona
+				toSend := &Info{"GETPERSON", "ip", string(personToSend)}
+				byteInfo, _ := json.Marshal(toSend)
+				fmt.Fprintln(con, string(byteInfo))
+			}()
+		}
+
+	}
+
+}
+
+func addToDatabase(person Persona) {
+	clientOptions := options.Client().ApplyURI("mongodb+srv://mongouser:raulino12@cluster0.qvc5e.mongodb.net/Cluster0?retryWrites=true&w=majority")
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	collection = client.Database("Concurrente").Collection("Pacients")
+
+	pacients := Pacients{time.Now(), time.Now(), primitive.NewObjectID(), person, ""}
+
+	collection.InsertOne(ctx, pacients)
+
+	fmt.Println("Se agregó correctamente", pacients)
 }
