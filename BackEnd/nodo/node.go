@@ -237,6 +237,8 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 		con, _ := net.Dial("tcp", info.AddrNodo)
 		defer con.Close()
 
+		fmt.Println("Envie mi configuracion", info.AddrNodo)
+
 		toSend2 := &Info{"SENDCONFIGURATION", localhostNot, strconv.Itoa(actualConfiguration)}
 		byteInfo2, _ := json.Marshal(toSend2)
 		fmt.Fprintln(con, string(byteInfo2))
@@ -247,7 +249,7 @@ func manejadorNotificacionesEnviadas(con net.Conn) {
 		var person Persona
 		json.Unmarshal([]byte(info.Valor), &person)
 		//fmt.Println(reflect.TypeOf(info.Valor))
-		//fmt.Println(test)
+		fmt.Println(person)
 		searchDBNode(person)
 
 	}

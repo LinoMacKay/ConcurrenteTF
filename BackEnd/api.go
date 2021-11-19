@@ -47,8 +47,8 @@ type Result struct {
 }
 
 //ips preseteados
-var apiIp = "localhost:9000"
-var ips = []string{"localhost:9002", "localhost:9004", "localhost:9006"}
+//var apiIp = "localhost:9000"
+var ips = []string{"host.docker.internal:9002", "host.docker.internal:9004", "host.docker.internal:9006"}
 
 //bitacoras
 var wg sync.WaitGroup
@@ -58,7 +58,8 @@ var result string
 var totalBitacora = make(chan []string)
 var totalConfig = make(chan string, 3)
 var confings []string
-var bitacoraConfg []string
+
+//var bitacoraConfg []string
 
 var personas []Persona
 
@@ -81,26 +82,6 @@ func listarAlumnos(resp http.ResponseWriter, req *http.Request) {
 	jsonbytes, _ := json.Marshal(personas)
 	io.WriteString(resp, string(jsonbytes))
 
-}
-
-func buscarPersonas(resp http.ResponseWriter, req *http.Request) {
-	resp.Header().Set("Content-Type", "application/json")
-
-	//Estas maneras son para obtener un request param
-	//code := req.FormValue("codigo")
-	//code := req.URL.Query()["codigo"][0]
-
-	//Estas maneras son para obtener un path variable
-	id := strings.TrimPrefix(req.URL.Path, "/buscar_alumnos/")
-
-	for _, alumno := range personas {
-		if alumno.Nombre == id {
-			jsonbytes, _ := json.Marshal(alumno)
-			io.WriteString(resp, string(jsonbytes))
-		}
-	}
-
-	log.Println(id)
 }
 
 func predict(resp http.ResponseWriter, req *http.Request) {
@@ -136,7 +117,7 @@ func predict(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 func reciveData() {
-	ln, _ := net.Listen("tcp", "localhost:9009")
+	ln, _ := net.Listen("tcp", "0.0.0.0:9009")
 	defer ln.Close()
 	for {
 		con, _ := ln.Accept()
@@ -188,7 +169,7 @@ func sendPatienteToNode(jsonBytes []byte) {
 				toSend := &Info{"GETJSON", ip, myString}
 				byteInfo, _ := json.Marshal(toSend)
 				fmt.Fprintln(con, string(byteInfo))
-				fmt.Println("ENVIE LOS VALORES")
+				fmt.Println("ENVIE LOS VALORES", toSend)
 			}()
 		}
 	}
@@ -243,7 +224,7 @@ func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 
 func enableCORS(router *mux.Router) {
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 	}).Methods(http.MethodOptions)
 	router.Use(middlewareCors)
 }
@@ -251,7 +232,7 @@ func enableCORS(router *mux.Router) {
 func middlewareCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
