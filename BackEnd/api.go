@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,11 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
-
-var collection *mongo.Collection
-var ctx = context.TODO()
 
 type Sintoma struct {
 	Sintoma    string `json:"sintoma"`
