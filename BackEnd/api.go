@@ -85,6 +85,7 @@ func predict(resp http.ResponseWriter, req *http.Request) {
 				//personas = append(personas, jsonBytes)
 				wg2.Wait()
 				resultJson := Result{result}
+				fmt.Println(resultJson)
 				resp.Header().Set("Content-Type", "application/json")
 				resp.WriteHeader(http.StatusOK)
 				json.NewEncoder(resp).Encode(resultJson)

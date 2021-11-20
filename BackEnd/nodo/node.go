@@ -49,8 +49,9 @@ type Info struct {
 }
 
 var wg sync.WaitGroup
-
+var forest Regression.Forest
 var confings []string
+var forestCount int = 0
 var localhostReg string //localhost:9001
 var localhostNot string //localhost:9002
 var actualConfiguration int
@@ -371,12 +372,11 @@ func doMLProcess(pacient Pacients) {
 
 	/*ML PROCESS*/
 
-	var sintomas []float64
+	var sintomas []int
 
 	for _, v := range pacient.Persona.Sintomas {
-		var y float64 = float64(v.IsSelected)
 
-		sintomas = append(sintomas, y)
+		sintomas = append(sintomas, v.IsSelected)
 	}
 	sintomas = append(sintomas, 1)
 
@@ -395,15 +395,13 @@ func doMLProcess(pacient Pacients) {
 	collection = client.Database("Concurrente").Collection("Pacients")
 	update := pacient
 
-	update.Prediction = fmt.Sprintf("%f%", prediction*100)
+	update.Prediction = fmt.Sprintf("%f", prediction*100)
 	update.UpdatedAt = time.Now()
 	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
 	sendResult(update)
 }
 
-func MLProcess(sintomas []float64) float64 {
-	start := time.Now()
-	//Leer Dataset en el repositorio remoto
+func MLProcess(sintomas []int) float64 {
 	resp, err := http.Get("https://raw.githubusercontent.com/LinoMacKay/ConcurrenteTF/master/BackEnd/dataset_covid.csv")
 	if err != nil {
 		print(err)
@@ -432,25 +430,12 @@ func MLProcess(sintomas []float64) float64 {
 		floatNum, _ := strconv.ParseFloat(target, bitSize)
 		targets = append(targets, floatNum)
 	}
+	var forest *Regression.Forest
+	//fmt.Println(inputs)
+	//fmt.Println(targets)
 
-	train_inputs := make([][]interface{}, 0)
-	train_targets := make([]float64, 0)
-	test_inputs := make([][]interface{}, 0)
-	test_targets := make([]float64, 0)
-	for i, x := range inputs {
-		if i%3 == 1 {
-			test_inputs = append(test_inputs, x)
-		} else {
-			train_inputs = append(train_inputs, x)
-		}
-	}
-	for i, y := range targets {
-		if i%3 == 1 {
-			test_targets = append(test_targets, y)
-		} else {
-			train_targets = append(train_targets, y)
-		}
-	}
+	forest = Regression.BuildForest(inputs, targets, 50, len(inputs), 10)
+
 	ejemplo := sintomas
 	apattern := ejemplo[:len(ejemplo)-1]
 	atarget := ejemplo[len(ejemplo)-1]
@@ -458,40 +443,23 @@ func MLProcess(sintomas []float64) float64 {
 	for _, value := range apattern {
 		ej = append(ej, value)
 	}
-	fmt.Println(ej)
-	forest := Regression.BuildForest(train_inputs, train_targets, 50, len(inputs), 10)
 
 	ainputs := make([][]interface{}, 0)
-	atargets := make([]float64, 0)
+	atargets := make([]int, 0)
 	ainputs = append(ainputs, ej)
 	atargets = append(atargets, atarget)
-	test_inputs = train_inputs
-	test_targets = train_targets
-	err_count := 0.0
-	fmt.Println(test_inputs[0])
-	for i := 0; i < len(test_inputs); i++ {
-		output := forest.Predicate(test_inputs[i])
-		// fmt.Println(output)
-		expect := test_targets[i]
-		//fmt.Println(output,expect)
-		if output != expect {
-			err_count += 1
-		}
-		if i == 0 {
-			fmt.Println("Se predijo de output:", output)
-		}
-	}
-	fmt.Println("success rate:", 1.0-err_count/float64(len(test_inputs)))
-	test_inputs = ainputs
-	test_targets = atargets
+
+	test_inputs := ainputs
+	test_targets := atargets
+
 	fmt.Println(test_inputs[0])
 	var output float64
 	for i := 0; i < len(test_inputs); i++ {
 		output = forest.Predicate(test_inputs[i])
-		fmt.Println("Se predijo de output: ", output)
+		fmt.Println("Se predijo de output: ", output, test_targets[i])
 
 	}
-	fmt.Println(time.Since(start))
+	fmt.Println("")
 	return output
 }
 
