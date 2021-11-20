@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fxsjy/RF.go/RF"
+	"github.com/fxsjy/RF.go/RF/Regression"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -371,13 +371,14 @@ func doMLProcess(pacient Pacients) {
 
 	/*ML PROCESS*/
 
-	var sintomas []string
+	var sintomas []float64
 
 	for _, v := range pacient.Persona.Sintomas {
-		haveSintoma := strconv.Itoa(v.IsSelected)
-		sintomas = append(sintomas, haveSintoma)
+		var y float64 = float64(v.IsSelected)
+
+		sintomas = append(sintomas, y)
 	}
-	sintomas = append(sintomas, "0")
+	sintomas = append(sintomas, 1)
 
 	prediction := MLProcess(sintomas)
 
@@ -393,13 +394,14 @@ func doMLProcess(pacient Pacients) {
 	}
 	collection = client.Database("Concurrente").Collection("Pacients")
 	update := pacient
-	update.Prediction = prediction
+
+	update.Prediction = fmt.Sprintf("%f%", prediction*100)
 	update.UpdatedAt = time.Now()
 	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
 	sendResult(update)
 }
 
-func MLProcess(sintomas []string) string {
+func MLProcess(sintomas []float64) float64 {
 	start := time.Now()
 	//Leer Dataset en el repositorio remoto
 	resp, err := http.Get("https://raw.githubusercontent.com/LinoMacKay/ConcurrenteTF/master/BackEnd/dataset_covid.csv")
@@ -411,7 +413,8 @@ func MLProcess(sintomas []string) string {
 	s_content := string(content)
 	lines := strings.Split(s_content, "\n")
 	inputs := make([][]interface{}, 0)
-	targets := make([]string, 0)
+	targets := make([]float64, 0)
+
 	for _, line := range lines {
 		line = strings.TrimRight(line, "\r\n")
 		if len(line) == 0 {
@@ -425,12 +428,15 @@ func MLProcess(sintomas []string) string {
 			X = append(X, x)
 		}
 		inputs = append(inputs, X)
-		targets = append(targets, target)
+		bitSize := 64
+		floatNum, _ := strconv.ParseFloat(target, bitSize)
+		targets = append(targets, floatNum)
 	}
+
 	train_inputs := make([][]interface{}, 0)
-	train_targets := make([]string, 0)
+	train_targets := make([]float64, 0)
 	test_inputs := make([][]interface{}, 0)
-	test_targets := make([]string, 0)
+	test_targets := make([]float64, 0)
 	for i, x := range inputs {
 		if i%3 == 1 {
 			test_inputs = append(test_inputs, x)
@@ -453,11 +459,12 @@ func MLProcess(sintomas []string) string {
 		ej = append(ej, value)
 	}
 	fmt.Println(ej)
+	forest := Regression.BuildForest(train_inputs, train_targets, 50, len(inputs), 10)
+
 	ainputs := make([][]interface{}, 0)
-	atargets := make([]string, 0)
+	atargets := make([]float64, 0)
 	ainputs = append(ainputs, ej)
 	atargets = append(atargets, atarget)
-	forest := RF.BuildForest(inputs, targets, 10, 1500, len(train_inputs[0])) //100 trees
 	test_inputs = train_inputs
 	test_targets = train_targets
 	err_count := 0.0
@@ -478,7 +485,7 @@ func MLProcess(sintomas []string) string {
 	test_inputs = ainputs
 	test_targets = atargets
 	fmt.Println(test_inputs[0])
-	var output string
+	var output float64
 	for i := 0; i < len(test_inputs); i++ {
 		output = forest.Predicate(test_inputs[i])
 		fmt.Println("Se predijo de output: ", output)

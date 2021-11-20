@@ -61,26 +61,8 @@ var confings []string
 
 //var bitacoraConfg []string
 
-var personas []Persona
-
 func main() {
-	cargarAlumnos()
 	handleRequests()
-
-}
-
-func cargarAlumnos() {
-	personas = []Persona{
-		{"Pedro", []Sintoma{
-			{"Gripe", 1}}},
-	}
-}
-
-func listarAlumnos(resp http.ResponseWriter, req *http.Request) {
-
-	resp.Header().Set("Content-Type", "application/json")
-	jsonbytes, _ := json.Marshal(personas)
-	io.WriteString(resp, string(jsonbytes))
 
 }
 
@@ -126,7 +108,6 @@ func reciveData() {
 }
 
 func sendPatienteToNode(jsonBytes []byte) {
-
 	if len(confings) == 0 {
 		go reciveData()
 	}
@@ -142,7 +123,6 @@ func sendPatienteToNode(jsonBytes []byte) {
 			byteInfo, _ := json.Marshal(toSend)
 			fmt.Fprintln(con, string(byteInfo))
 		}()
-
 		wg.Wait()
 	}
 	if len(totalBitacora) > 0 {
@@ -166,7 +146,7 @@ func sendPatienteToNode(jsonBytes []byte) {
 				con, _ := net.Dial("tcp", ipToSend)
 				defer con.Close()
 				myString := string(jsonBytes[:])
-				toSend := &Info{"GETJSON", ip, myString}
+				toSend := &Info{"GETJSON", ipToSend, myString}
 				byteInfo, _ := json.Marshal(toSend)
 				fmt.Fprintln(con, string(byteInfo))
 				fmt.Println("ENVIE LOS VALORES", toSend)
@@ -219,7 +199,6 @@ func manejarRespuetas(con net.Conn) {
 
 func mostrarInicio(resp http.ResponseWriter, req *http.Request) {
 	io.WriteString(resp, "Inicio")
-
 }
 
 func enableCORS(router *mux.Router) {
@@ -246,7 +225,6 @@ func handleRequests() {
 	r := mux.NewRouter()
 	enableCORS(r)
 	r.HandleFunc("/", mostrarInicio)
-	http.HandleFunc("/listarPersonas", listarAlumnos)
 	//http.HandleFunc("/", mostrarInicio)
 	r.HandleFunc("/predict", predict)
 	http.Handle("/", r)
