@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -49,7 +50,6 @@ type Info struct {
 }
 
 var wg sync.WaitGroup
-var forest Regression.Forest
 var confings []string
 var forestCount int = 0
 var localhostReg string //localhost:9001
@@ -400,6 +400,16 @@ func doMLProcess(pacient Pacients) {
 	collection.FindOneAndReplace(ctx, bson.M{"_id": pacient.ID}, update)
 	sendResult(update)
 }
+func Exists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
 
 func MLProcess(sintomas []int) float64 {
 	resp, err := http.Get("https://raw.githubusercontent.com/LinoMacKay/ConcurrenteTF/master/BackEnd/dataset_covid.csv")
@@ -430,11 +440,7 @@ func MLProcess(sintomas []int) float64 {
 		floatNum, _ := strconv.ParseFloat(target, bitSize)
 		targets = append(targets, floatNum)
 	}
-	var forest *Regression.Forest
-	//fmt.Println(inputs)
-	//fmt.Println(targets)
-
-	forest = Regression.BuildForest(inputs, targets, 50, len(inputs), 10)
+	forest := Regression.BuildForest(inputs, targets, 20, len(inputs), 14)
 
 	ejemplo := sintomas
 	apattern := ejemplo[:len(ejemplo)-1]

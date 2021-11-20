@@ -189,12 +189,13 @@ func manejarRespuetas(con net.Conn) {
 		totalBitacora <- bitacora
 	}
 	if info.Tipo == "SENDRESULT" {
-		defer wg2.Done()
+
 		//fmt.Println("RESULTADO", info.Valor)
 		var pacient2 Pacients
 		json.Unmarshal([]byte(info.Valor), &pacient2)
 		result = pacient2.Prediction
-		fmt.Println(result)
+		fmt.Println("Resultado" + result)
+		wg2.Done()
 	}
 }
 
